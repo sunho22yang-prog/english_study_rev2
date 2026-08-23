@@ -4,6 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>문장 서랍</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#2F6659">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,380..600&family=Noto+Sans+KR:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap">
@@ -391,7 +395,7 @@
   var LOCAL_STORAGE_KEY = "sentenceDrawer.v1.phrases";
   var PREF_REVIEW_MASTERED_KEY = "sentenceDrawer.v1.pref.reviewIncludeMastered";
   var DAILY_SET_SIZE = 4;
-  var HEAD_STATIC = '<meta charset="UTF-8">\n<meta name="viewport" content="width=device-width, initial-scale=1">\n<title>문장 서랍</title>\n<link rel="preconnect" href="https://fonts.googleapis.com">\n<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>\n<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,380..600&family=Noto+Sans+KR:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap">';
+  var HEAD_STATIC = '<meta charset="UTF-8">\n<meta name="viewport" content="width=device-width, initial-scale=1">\n<title>문장 서랍</title>\n<link rel="manifest" href="manifest.json">\n<meta name="theme-color" content="#2F6659">\n<link rel="icon" href="icon-192.png">\n<link rel="apple-touch-icon" href="icon-192.png">\n<link rel="preconnect" href="https://fonts.googleapis.com">\n<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>\n<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,380..600&family=Noto+Sans+KR:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap">';
 
   var artifactAPI = null;
   var storageMode = "local"; // "artifact" | "local"
@@ -1025,6 +1029,18 @@
     restoreAfterReload();
     renderReviewCard(false);
     renderList();
+    registerServiceWorker();
+  }
+
+  function registerServiceWorker(){
+    // Only meaningful for the plain static (GitHub Pages / local-file) deployment,
+    // where sw.js/manifest.json/icons are actually served alongside this page.
+    if(storageMode !== "local") return;
+    if(!("serviceWorker" in navigator)) return;
+    if(location.protocol.indexOf("http") !== 0) return; // skip on file:// — SW requires http(s)
+    window.addEventListener("load", function(){
+      navigator.serviceWorker.register("sw.js").catch(function(){ /* fine without it */ });
+    });
   }
 
   function initCapability(){
