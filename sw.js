@@ -1,6 +1,7 @@
 // 문장 서랍 — minimal offline app-shell cache.
-// Bump CACHE_NAME whenever index.html/manifest/icons change so old caches are dropped.
-var CACHE_NAME = "sentence-drawer-v2";
+// Bump CACHE_NAME whenever index.html/manifest/icons change so old caches are dropped,
+// and so the browser's byte-comparison of this file actually detects an update.
+var CACHE_NAME = "sentence-drawer-v3";
 var APP_SHELL = [
   "./",
   "./index.html",
@@ -13,7 +14,13 @@ var APP_SHELL = [
 self.addEventListener("install", function(event){
   event.waitUntil(
     caches.open(CACHE_NAME).then(function(cache){
-      return cache.addAll(APP_SHELL);
+      // Fetch with cache:"no-store" so the very first cache fill can't be
+      // poisoned by a stale HTTP-cached copy of index.html from GitHub Pages/CDN.
+      return Promise.all(APP_SHELL.map(function(url){
+        return fetch(url, { cache: "no-store" }).then(function(res){
+          if(res && res.ok) return cache.put(url, res);
+        }).catch(function(){ /* offline on first install: ignore, app still installs */ });
+      }));
     })
   );
   self.skipWaiting();
@@ -38,7 +45,9 @@ self.addEventListener("fetch", function(event){
 
   event.respondWith(
     caches.match(event.request).then(function(cached){
-      var network = fetch(event.request).then(function(res){
+      // cache:"no-store" bypasses the browser's own HTTP cache, so this always
+      // asks GitHub Pages for the real latest bytes instead of a stale disk-cached copy.
+      var network = fetch(event.request, { cache: "no-store" }).then(function(res){
         if(res && res.ok){
           var copy = res.clone();
           caches.open(CACHE_NAME).then(function(cache){ cache.put(event.request, copy); });
