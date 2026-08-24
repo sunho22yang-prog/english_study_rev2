@@ -1637,6 +1637,40 @@
     document.getElementById("seed-banner").hidden = true;
   });
 
+  // ---------- backfill translations into already-stored phrases ----------
+  // The seed-merge banner above only ADDS phrases whose id the device hasn't
+  // seen yet — it deliberately never touches phrases already stored locally,
+  // so a user wouldn't lose edits to a phrase they'd already saved. But that
+  // also means when we later add new data (like Korean translations) to
+  // existing seed phrases, a device that already has those ids stored keeps
+  // its old copy forever and never picks up the new "ko" fields. This does a
+  // narrow, additive-only patch: for phrases that still match the shipped
+  // seed by id, and examples that still match by tag+text (i.e. the user
+  // never edited that specific example), fill in a missing "ko" field. It
+  // never overwrites text the user changed and never touches mastered state.
+  function backfillSeedTranslations(){
+    if(storageMode !== "local") return false;
+    var seed = readSeedData();
+    var seedById = {};
+    seed.forEach(function(p){ if(p.id) seedById[p.id] = p; });
+    var changed = false;
+    state.phrases.forEach(function(p){
+      var sp = seedById[p.id];
+      if(!sp || !Array.isArray(sp.examples) || !Array.isArray(p.examples)) return;
+      p.examples.forEach(function(ex){
+        if(ex.ko) return;
+        var match = sp.examples.filter(function(se){
+          return se.tag === ex.tag && se.text === ex.text && se.ko;
+        })[0];
+        if(match){
+          ex.ko = match.ko;
+          changed = true;
+        }
+      });
+    });
+    return changed;
+  }
+
   // ---------- stats ----------
   function updateStats(){
     document.getElementById("stat-total").textContent = state.phrases.length;
@@ -1724,6 +1758,9 @@
   // ---------- init ----------
   function boot(){
     state.phrases = storageMode === "artifact" ? readSeedData() : loadLocalPhrases();
+    if(backfillSeedTranslations()){
+      try{ localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(state.phrases)); }catch(e){}
+    }
     updateStats();
     renderSyncNote();
     checkSeedUpdates();
