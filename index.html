@@ -166,14 +166,24 @@
   .card-meaning{margin:0 0 12px;font-size:.95rem;color:var(--ink);line-height:1.5;}
   .card-examples{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px;}
   .card-examples li{
-    display:flex;align-items:center;justify-content:space-between;gap:10px;
     font-size:.88rem;color:var(--ink-soft);line-height:1.5;background:var(--surface-alt);
     border-radius:10px;padding:9px 10px 9px 12px;
+  }
+  .ex-row{display:flex;align-items:center;justify-content:space-between;gap:10px;}
+  .ex-translation{
+    margin:6px 0 0;padding-top:6px;border-top:1px dashed var(--border);
+    font-size:.85rem;color:var(--ink);
   }
   .ex-tag{
     font-size:.68rem;font-weight:600;color:var(--accent);background:var(--accent-soft);
     border-radius:6px;padding:1px 6px;margin-right:7px;flex-shrink:0;vertical-align:2px;
   }
+  .translate-toggle-btn{
+    display:block;margin:0 0 10px;border:1px solid var(--border);background:var(--surface);
+    color:var(--ink-soft);font-family:inherit;font-size:.78rem;font-weight:600;
+    padding:6px 12px;border-radius:999px;cursor:pointer;
+  }
+  .translate-toggle-btn:hover{border-color:var(--accent);color:var(--accent);}
   .card-empty-ex{margin:0;font-size:.85rem;color:var(--ink-soft);}
   .icon-btn-sm{
     border:none;background:transparent;cursor:pointer;font-size:.9rem;flex-shrink:0;
@@ -183,6 +193,27 @@
   .card-footer{margin-top:16px;padding-top:12px;border-top:1px solid var(--border);}
   .star-toggle{display:flex;align-items:center;gap:8px;font-size:.85rem;color:var(--ink-soft);cursor:pointer;width:fit-content;}
   .star-toggle input{width:16px;height:16px;accent-color:var(--gold);}
+
+  .autoplay-start-btn{
+    display:block;width:100%;margin-top:12px;border:1px dashed var(--border);background:transparent;
+    color:var(--ink-soft);font-family:inherit;font-size:.85rem;font-weight:600;
+    padding:10px;border-radius:10px;cursor:pointer;
+  }
+  .autoplay-start-btn:hover{border-color:var(--accent);color:var(--accent);}
+
+  .autoplay-bar{
+    position:fixed;left:0;right:0;bottom:0;z-index:30;
+    display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+    background:var(--surface);border-top:1px solid var(--border);box-shadow:var(--shadow);
+    padding:12px 16px;padding-bottom:calc(12px + env(safe-area-inset-bottom));
+  }
+  .autoplay-info{flex:1;min-width:180px;}
+  .autoplay-phrase{margin:0;font-family:'Fraunces',serif;font-size:.9rem;color:var(--ink-soft);}
+  .autoplay-example{margin:2px 0 0;font-size:.98rem;color:var(--ink);line-height:1.4;}
+  .autoplay-translation{margin:4px 0 0;font-size:.85rem;color:var(--ink-soft);}
+  .autoplay-controls{display:flex;gap:6px;flex-shrink:0;}
+  .autoplay-controls .icon-btn{width:34px;height:34px;font-size:.9rem;}
+  body.autoplay-open .page{padding-bottom:120px;}
 
   .review-controls{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}
   .mastered-filter{display:flex;align-items:center;gap:7px;font-size:.82rem;color:var(--ink-soft);cursor:pointer;}
@@ -302,6 +333,7 @@
         </label>
         <button id="next-card-btn" class="btn btn-primary" type="button">다음 카드</button>
       </div>
+      <button id="autoplay-start-btn" class="autoplay-start-btn" type="button">🔀 예문 전체 랜덤 재생</button>
     </section>
 
     <section id="view-list" class="view" data-active="false">
@@ -361,31 +393,505 @@
   </main>
 
   <footer class="foot-note">
-    <p>이 서랍은 열 때마다 저장된 표현 중 일부를 자동으로 골라 보여줘요. 알림을 따로 보내진 않으니, 생각날 때 직접 열어 확인해보세요. 발음은 이 기기의 음성 합성 기능을 사용해요.</p>
+    <p>이 서랍은 열 때마다 저장된 표현 중 일부를 자동으로 골라 보여줘요. 알림을 따로 보내진 않으니, 생각날 때 직접 열어 확인해보세요. 발음은 이 기기의 음성 합성 기능을 사용해요. 화면이 꺼지거나 다른 앱으로 전환하면 기기에 따라 재생이 멈출 수 있어요.</p>
   </footer>
+
+  <div class="autoplay-bar" id="autoplay-bar" hidden>
+    <div class="autoplay-info">
+      <p class="autoplay-phrase" id="autoplay-phrase-text"></p>
+      <p class="autoplay-example" id="autoplay-example-text"></p>
+      <p class="autoplay-translation" id="autoplay-translation-text" hidden></p>
+    </div>
+    <div class="autoplay-controls">
+      <button id="autoplay-translate-btn" class="icon-btn" type="button" aria-label="번역 보기">가</button>
+      <button id="autoplay-pause-btn" class="icon-btn" type="button" aria-label="일시정지">⏸</button>
+      <button id="autoplay-next-btn" class="icon-btn" type="button" aria-label="다음 예문">⏭</button>
+      <button id="autoplay-stop-btn" class="icon-btn" type="button" aria-label="정지">⏹</button>
+    </div>
+  </div>
 </template>
 
 <script type="application/json" id="phrase-data">[
-  {"id":"p1","text":"I've ever had","meaning":"지금까지 겪어본 것 중에서 (최고/최악)라는 뜻으로, 최상급 뒤에 붙여 써요.","examples":[{"text":"This is the best coffee I've ever had.","tag":"일상"},{"text":"That was the worst flight I've ever had.","tag":"일상"},{"text":"This is the trickiest PCIe link-training bug I've ever had to debug.","tag":"업무"}],"mastered":false,"added":"2026-08-22"},
-  {"id":"p2","text":"I have no idea how she solved that problem.","meaning":"그녀가 그 문제를 어떻게 풀었는지 전혀 모르겠다.","examples":[{"text":"I have no idea how he fixed the printer so fast.","tag":"일상"},{"text":"I have no idea how they found this place.","tag":"일상"},{"text":"I have no idea how he root-caused that USB enumeration failure so quickly.","tag":"업무"}],"mastered":false,"added":"2026-08-22"},
-  {"id":"p3","text":"turn out","meaning":"결국 ~로 밝혀지다, 일이 ~하게 되다.","examples":[{"text":"Everything turned out fine in the end.","tag":"일상"},{"text":"It turned out that she was right all along.","tag":"일상"},{"text":"It turned out the Ethernet PHY timing violation was caused by a testbench clock skew, not the RTL.","tag":"업무"}],"mastered":false,"added":"2026-08-22"},
-  {"id":"p4","text":"When was the last time...?","meaning":"마지막으로 ~한 게 언제였어?","examples":[{"text":"When was the last time you went to the movies?","tag":"일상"},{"text":"When was the last time you called your parents?","tag":"일상"},{"text":"When was the last time you reran regression after the PCIe Gen5 equalization fix?","tag":"업무"}],"mastered":false,"added":"2026-08-22"},
-  {"id":"p5","text":"I don't feel like going out tonight.","meaning":"오늘 밤엔 나가고 싶은 기분이 아니다.","examples":[{"text":"I don't feel like cooking tonight, let's just order in.","tag":"일상"},{"text":"She didn't feel like talking about it, so I let it go.","tag":"일상"},{"text":"I don't feel like closing this ticket until the USB3 compliance test actually passes.","tag":"업무"}],"mastered":false,"added":"2026-08-22"},
-  {"id":"p6","text":"clear up","meaning":"(증상이) 나아지다, 낫다.","examples":[{"text":"My cold should clear up in a couple of days.","tag":"일상"},{"text":"The rash cleared up after I used the cream.","tag":"일상"},{"text":"The link-up failures cleared up once we updated the PCIe LTSSM timeout value.","tag":"업무"}],"mastered":false,"added":"2026-08-22"},
-  {"id":"p7","text":"Can I get you a cup of coffee?","meaning":"커피 한 잔 갖다 드릴까요? (무언가를 권할 때)","examples":[{"text":"Can I get you anything from the kitchen?","tag":"일상"},{"text":"Can I get you a refill before I sit down?","tag":"일상"},{"text":"Can I get you the latest coverage report before the sign-off review?","tag":"업무"}],"mastered":false,"added":"2026-08-22"},
-  {"id":"p8","text":"Compared to last year","meaning":"작년과 비교하면","examples":[{"text":"Compared to last year, sales have doubled.","tag":"일상"},{"text":"Compared to last year, it's been a much colder winter.","tag":"일상"},{"text":"Compared to last year, our PCIe verification closure rate has improved a lot.","tag":"업무"}],"mastered":false,"added":"2026-08-22"},
-  {"id":"p9","text":"Compared to others","meaning":"다른 사람들과 비교하면","examples":[{"text":"Compared to others on the team, he's pretty quiet.","tag":"일상"},{"text":"Compared to others my age, I started working late.","tag":"일상"},{"text":"Compared to others on the team, he's spent the most time on the USB retimer testbench.","tag":"업무"}],"mastered":false,"added":"2026-08-22"},
-  {"id":"p10","text":"Compared to others, I don't have it that bad.","meaning":"남들과 비교하면 나는 그렇게 힘든 편은 아니다.","examples":[{"text":"Compared to others, I don't have it that bad.","tag":"일상"},{"text":"Compared to what she's dealing with, I really don't have it that bad.","tag":"일상"},{"text":"Compared to others still chasing Ethernet MAC bugs, I don't have it that bad — my PCIe block is almost signed off.","tag":"업무"}],"mastered":false,"added":"2026-08-22"},
-  {"id":"p11","text":"It'll all be over soon.","meaning":"곧 다 끝날 거야. (힘든 상황을 위로할 때)","examples":[{"text":"Don't worry, it'll all be over soon.","tag":"일상"},{"text":"Just hang in there — it'll all be over soon.","tag":"일상"},{"text":"This regression run will all be over soon, then we can finally sign off the block.","tag":"업무"}],"mastered":false,"added":"2026-08-22"},
-  {"id":"p12","text":"All of this will be more than worth it.","meaning":"이 모든 게 그럴 만한 가치가 있을 거야. (충분히 보상될 거야)","examples":[{"text":"Trust me, all of this will be more than worth it in the end.","tag":"일상"},{"text":"If we land this deal, all of this will be more than worth it.","tag":"일상"},{"text":"If this USB4 verification effort gets the silicon right the first time, all of this will be more than worth it.","tag":"업무"}],"mastered":false,"added":"2026-08-22"},
-  {"id":"p13","text":"I'm having trouble deciding","meaning":"결정하는 데 어려움을 겪고 있다.","examples":[{"text":"I'm having trouble deciding what to order.","tag":"일상"},{"text":"I'm having trouble deciding which apartment to rent.","tag":"일상"},{"text":"I'm having trouble deciding whether to re-spin the PCIe PHY or work around it in firmware.","tag":"업무"}],"mastered":false,"added":"2026-08-23"},
-  {"id":"p14","text":"I've been thinking about","meaning":"~에 대해 계속 생각해오고 있다.","examples":[{"text":"I've been thinking about taking a trip next month.","tag":"일상"},{"text":"I've been thinking about switching teams.","tag":"일상"},{"text":"I've been thinking about how we could shorten the USB compliance test cycle.","tag":"업무"}],"mastered":false,"added":"2026-08-23"},
-  {"id":"p15","text":"By the time + 주어 + 동사","meaning":"~할 때쯤이면, ~하기 전에","examples":[{"text":"By the time we arrived, the meeting had already started.","tag":"일상"},{"text":"By the time you read this, I'll be on a plane.","tag":"일상"},{"text":"By the time the silicon comes back, we need the PCIe testbench fully regression-clean.","tag":"업무"}],"mastered":false,"added":"2026-08-23"},
-  {"id":"p16","text":"What do you feel like ~ing?","meaning":"뭐 하고 싶어? (기분/의향을 물을 때)","examples":[{"text":"What do you feel like eating tonight?","tag":"일상"},{"text":"What do you feel like doing this weekend?","tag":"일상"},{"text":"What do you feel like tackling first — the USB3 bug or the Ethernet coverage gap?","tag":"업무"}],"mastered":false,"added":"2026-08-23"},
-  {"id":"p17","text":"I feel like going","meaning":"~하고 싶은 기분이다.","examples":[{"text":"I feel like going for a walk.","tag":"일상"},{"text":"I feel like going home early today.","tag":"일상"},{"text":"I feel like going through the waveform one more time before we close this bug.","tag":"업무"}],"mastered":false,"added":"2026-08-23"},
-  {"id":"p18","text":"end up ~ing","meaning":"결국 ~하게 되다.","examples":[{"text":"We ended up staying home instead of going out.","tag":"일상"},{"text":"He ended up apologizing first.","tag":"일상"},{"text":"We ended up re-running the whole regression suite because of that clock-domain-crossing fix.","tag":"업무"}],"mastered":false,"added":"2026-08-23"},
-  {"id":"p19","text":"Too much beautiful scenery to capture in one photo.","meaning":"너무 아름다운 풍경을 한 장의 사진에 담을 수 없다.","examples":[{"text":"Too much beautiful scenery to capture in one photo.","tag":"일상"},{"text":"There was too much going on at the festival to capture in one video.","tag":"일상"},{"text":"There's too much coverage data to capture in a single dashboard, so we split it by interface.","tag":"업무"}],"mastered":false,"added":"2026-08-23"},
-  {"id":"p20","text":"That explains why + 주어 + 동사","meaning":"그래서 ~한 거구나, 그게 ~한 이유를 설명해주네.","examples":[{"text":"That explains why she was so quiet today.","tag":"일상"},{"text":"That explains why the door was locked.","tag":"일상"},{"text":"That explains why the link kept retraining — the reference clock was out of spec.","tag":"업무"}],"mastered":false,"added":"2026-08-23"}
+  {
+    "id": "p1",
+    "text": "I've ever had",
+    "meaning": "지금까지 겪어본 것 중에서 (최고/최악)라는 뜻으로, 최상급 뒤에 붙여 써요.",
+    "examples": [
+      {
+        "text": "This is the best coffee I've ever had.",
+        "tag": "일상",
+        "ko": "이건 내가 지금까지 마셔본 커피 중에 최고야."
+      },
+      {
+        "text": "That was the worst flight I've ever had.",
+        "tag": "일상",
+        "ko": "그건 내가 지금까지 겪어본 것 중 최악의 비행이었어."
+      },
+      {
+        "text": "This is the trickiest PCIe link-training bug I've ever had to debug.",
+        "tag": "업무",
+        "ko": "이건 내가 지금까지 디버깅해본 것 중 가장 까다로운 PCIe 링크 트레이닝 버그야."
+      }
+    ],
+    "mastered": false,
+    "added": "2026-08-22"
+  },
+  {
+    "id": "p2",
+    "text": "I have no idea how she solved that problem.",
+    "meaning": "그녀가 그 문제를 어떻게 풀었는지 전혀 모르겠다.",
+    "examples": [
+      {
+        "text": "I have no idea how he fixed the printer so fast.",
+        "tag": "일상",
+        "ko": "그가 어떻게 그렇게 빨리 프린터를 고쳤는지 전혀 모르겠어."
+      },
+      {
+        "text": "I have no idea how they found this place.",
+        "tag": "일상",
+        "ko": "그들이 이곳을 어떻게 찾았는지 전혀 모르겠어."
+      },
+      {
+        "text": "I have no idea how he root-caused that USB enumeration failure so quickly.",
+        "tag": "업무",
+        "ko": "그가 그 USB 열거(enumeration) 실패의 근본 원인을 어떻게 그렇게 빨리 찾아냈는지 전혀 모르겠어."
+      }
+    ],
+    "mastered": false,
+    "added": "2026-08-22"
+  },
+  {
+    "id": "p3",
+    "text": "turn out",
+    "meaning": "결국 ~로 밝혀지다, 일이 ~하게 되다.",
+    "examples": [
+      {
+        "text": "Everything turned out fine in the end.",
+        "tag": "일상",
+        "ko": "결국 모든 게 잘 풀렸어."
+      },
+      {
+        "text": "It turned out that she was right all along.",
+        "tag": "일상",
+        "ko": "결국 그녀가 계속 옳았던 걸로 밝혀졌어."
+      },
+      {
+        "text": "It turned out the Ethernet PHY timing violation was caused by a testbench clock skew, not the RTL.",
+        "tag": "업무",
+        "ko": "결국 이더넷 PHY 타이밍 위반은 RTL이 아니라 테스트벤치 클럭 스큐 때문인 걸로 밝혀졌어."
+      }
+    ],
+    "mastered": false,
+    "added": "2026-08-22"
+  },
+  {
+    "id": "p4",
+    "text": "When was the last time...?",
+    "meaning": "마지막으로 ~한 게 언제였어?",
+    "examples": [
+      {
+        "text": "When was the last time you went to the movies?",
+        "tag": "일상",
+        "ko": "마지막으로 영화 보러 간 게 언제였어?"
+      },
+      {
+        "text": "When was the last time you called your parents?",
+        "tag": "일상",
+        "ko": "마지막으로 부모님께 전화드린 게 언제였어?"
+      },
+      {
+        "text": "When was the last time you reran regression after the PCIe Gen5 equalization fix?",
+        "tag": "업무",
+        "ko": "PCIe Gen5 이퀄라이제이션 수정 후에 마지막으로 리그레션을 다시 돌린 게 언제였어?"
+      }
+    ],
+    "mastered": false,
+    "added": "2026-08-22"
+  },
+  {
+    "id": "p5",
+    "text": "I don't feel like going out tonight.",
+    "meaning": "오늘 밤엔 나가고 싶은 기분이 아니다.",
+    "examples": [
+      {
+        "text": "I don't feel like cooking tonight, let's just order in.",
+        "tag": "일상",
+        "ko": "오늘 밤엔 요리하고 싶은 기분이 아니야, 그냥 시켜 먹자."
+      },
+      {
+        "text": "She didn't feel like talking about it, so I let it go.",
+        "tag": "일상",
+        "ko": "그녀가 그 얘기를 하고 싶어하지 않는 것 같아서 그냥 넘어갔어."
+      },
+      {
+        "text": "I don't feel like closing this ticket until the USB3 compliance test actually passes.",
+        "tag": "업무",
+        "ko": "USB3 컴플라이언스 테스트가 실제로 통과할 때까지는 이 티켓을 닫고 싶은 기분이 아니야."
+      }
+    ],
+    "mastered": false,
+    "added": "2026-08-22"
+  },
+  {
+    "id": "p6",
+    "text": "clear up",
+    "meaning": "(증상이) 나아지다, 낫다.",
+    "examples": [
+      {
+        "text": "My cold should clear up in a couple of days.",
+        "tag": "일상",
+        "ko": "감기는 며칠 지나면 나을 거야."
+      },
+      {
+        "text": "The rash cleared up after I used the cream.",
+        "tag": "일상",
+        "ko": "크림을 바른 후에 발진이 가라앉았어."
+      },
+      {
+        "text": "The link-up failures cleared up once we updated the PCIe LTSSM timeout value.",
+        "tag": "업무",
+        "ko": "PCIe LTSSM 타임아웃 값을 업데이트하고 나니 링크업 실패가 해결됐어."
+      }
+    ],
+    "mastered": false,
+    "added": "2026-08-22"
+  },
+  {
+    "id": "p7",
+    "text": "Can I get you a cup of coffee?",
+    "meaning": "커피 한 잔 갖다 드릴까요? (무언가를 권할 때)",
+    "examples": [
+      {
+        "text": "Can I get you anything from the kitchen?",
+        "tag": "일상",
+        "ko": "주방에서 뭐 좀 가져다 드릴까요?"
+      },
+      {
+        "text": "Can I get you a refill before I sit down?",
+        "tag": "일상",
+        "ko": "제가 앉기 전에 리필해드릴까요?"
+      },
+      {
+        "text": "Can I get you the latest coverage report before the sign-off review?",
+        "tag": "업무",
+        "ko": "사인오프 리뷰 전에 최신 커버리지 리포트 갖다 드릴까요?"
+      }
+    ],
+    "mastered": false,
+    "added": "2026-08-22"
+  },
+  {
+    "id": "p8",
+    "text": "Compared to last year",
+    "meaning": "작년과 비교하면",
+    "examples": [
+      {
+        "text": "Compared to last year, sales have doubled.",
+        "tag": "일상",
+        "ko": "작년과 비교하면 매출이 두 배가 됐어."
+      },
+      {
+        "text": "Compared to last year, it's been a much colder winter.",
+        "tag": "일상",
+        "ko": "작년과 비교하면 이번 겨울은 훨씬 추워."
+      },
+      {
+        "text": "Compared to last year, our PCIe verification closure rate has improved a lot.",
+        "tag": "업무",
+        "ko": "작년과 비교하면 우리 PCIe 검증 종료율이 많이 좋아졌어."
+      }
+    ],
+    "mastered": false,
+    "added": "2026-08-22"
+  },
+  {
+    "id": "p9",
+    "text": "Compared to others",
+    "meaning": "다른 사람들과 비교하면",
+    "examples": [
+      {
+        "text": "Compared to others on the team, he's pretty quiet.",
+        "tag": "일상",
+        "ko": "팀의 다른 사람들과 비교하면 그는 꽤 조용한 편이야."
+      },
+      {
+        "text": "Compared to others my age, I started working late.",
+        "tag": "일상",
+        "ko": "내 또래의 다른 사람들과 비교하면 나는 일을 늦게 시작한 편이야."
+      },
+      {
+        "text": "Compared to others on the team, he's spent the most time on the USB retimer testbench.",
+        "tag": "업무",
+        "ko": "팀의 다른 사람들과 비교하면 그가 USB 리타이머 테스트벤치에 가장 많은 시간을 썼어."
+      }
+    ],
+    "mastered": false,
+    "added": "2026-08-22"
+  },
+  {
+    "id": "p10",
+    "text": "Compared to others, I don't have it that bad.",
+    "meaning": "남들과 비교하면 나는 그렇게 힘든 편은 아니다.",
+    "examples": [
+      {
+        "text": "Compared to others, I don't have it that bad.",
+        "tag": "일상",
+        "ko": "다른 사람들과 비교하면 나는 그렇게 힘든 편은 아니야."
+      },
+      {
+        "text": "Compared to what she's dealing with, I really don't have it that bad.",
+        "tag": "일상",
+        "ko": "그녀가 겪고 있는 일에 비하면 나는 정말 힘든 편이 아니야."
+      },
+      {
+        "text": "Compared to others still chasing Ethernet MAC bugs, I don't have it that bad — my PCIe block is almost signed off.",
+        "tag": "업무",
+        "ko": "아직도 이더넷 MAC 버그를 쫓고 있는 다른 사람들에 비하면 나는 힘든 편이 아니야 — 내 PCIe 블록은 거의 사인오프 단계야."
+      }
+    ],
+    "mastered": false,
+    "added": "2026-08-22"
+  },
+  {
+    "id": "p11",
+    "text": "It'll all be over soon.",
+    "meaning": "곧 다 끝날 거야. (힘든 상황을 위로할 때)",
+    "examples": [
+      {
+        "text": "Don't worry, it'll all be over soon.",
+        "tag": "일상",
+        "ko": "걱정하지 마, 곧 다 끝날 거야."
+      },
+      {
+        "text": "Just hang in there — it'll all be over soon.",
+        "tag": "일상",
+        "ko": "조금만 버텨 — 곧 다 끝날 거야."
+      },
+      {
+        "text": "This regression run will all be over soon, then we can finally sign off the block.",
+        "tag": "업무",
+        "ko": "이 리그레션 실행도 곧 다 끝날 거고, 그러면 드디어 블록을 사인오프할 수 있어."
+      }
+    ],
+    "mastered": false,
+    "added": "2026-08-22"
+  },
+  {
+    "id": "p12",
+    "text": "All of this will be more than worth it.",
+    "meaning": "이 모든 게 그럴 만한 가치가 있을 거야. (충분히 보상될 거야)",
+    "examples": [
+      {
+        "text": "Trust me, all of this will be more than worth it in the end.",
+        "tag": "일상",
+        "ko": "날 믿어, 결국 이 모든 게 충분히 가치 있을 거야."
+      },
+      {
+        "text": "If we land this deal, all of this will be more than worth it.",
+        "tag": "일상",
+        "ko": "이 계약을 따내면 이 모든 게 충분히 가치 있을 거야."
+      },
+      {
+        "text": "If this USB4 verification effort gets the silicon right the first time, all of this will be more than worth it.",
+        "tag": "업무",
+        "ko": "이 USB4 검증 작업 덕분에 실리콘이 한 번에 제대로 나온다면, 이 모든 게 충분히 가치 있을 거야."
+      }
+    ],
+    "mastered": false,
+    "added": "2026-08-22"
+  },
+  {
+    "id": "p13",
+    "text": "I'm having trouble deciding",
+    "meaning": "결정하는 데 어려움을 겪고 있다.",
+    "examples": [
+      {
+        "text": "I'm having trouble deciding what to order.",
+        "tag": "일상",
+        "ko": "뭘 주문할지 결정하는 데 어려움을 겪고 있어."
+      },
+      {
+        "text": "I'm having trouble deciding which apartment to rent.",
+        "tag": "일상",
+        "ko": "어느 아파트를 임대할지 결정하는 데 어려움을 겪고 있어."
+      },
+      {
+        "text": "I'm having trouble deciding whether to re-spin the PCIe PHY or work around it in firmware.",
+        "tag": "업무",
+        "ko": "PCIe PHY를 리스핀할지 펌웨어로 우회할지 결정하는 데 어려움을 겪고 있어."
+      }
+    ],
+    "mastered": false,
+    "added": "2026-08-23"
+  },
+  {
+    "id": "p14",
+    "text": "I've been thinking about",
+    "meaning": "~에 대해 계속 생각해오고 있다.",
+    "examples": [
+      {
+        "text": "I've been thinking about taking a trip next month.",
+        "tag": "일상",
+        "ko": "다음 달에 여행 가는 걸 계속 생각하고 있어."
+      },
+      {
+        "text": "I've been thinking about switching teams.",
+        "tag": "일상",
+        "ko": "팀을 옮기는 걸 계속 생각하고 있어."
+      },
+      {
+        "text": "I've been thinking about how we could shorten the USB compliance test cycle.",
+        "tag": "업무",
+        "ko": "USB 컴플라이언스 테스트 주기를 어떻게 단축할 수 있을지 계속 생각하고 있어."
+      }
+    ],
+    "mastered": false,
+    "added": "2026-08-23"
+  },
+  {
+    "id": "p15",
+    "text": "By the time + 주어 + 동사",
+    "meaning": "~할 때쯤이면, ~하기 전에",
+    "examples": [
+      {
+        "text": "By the time we arrived, the meeting had already started.",
+        "tag": "일상",
+        "ko": "우리가 도착했을 때쯤엔 회의가 이미 시작된 상태였어."
+      },
+      {
+        "text": "By the time you read this, I'll be on a plane.",
+        "tag": "일상",
+        "ko": "네가 이걸 읽을 때쯤이면 난 비행기 안일 거야."
+      },
+      {
+        "text": "By the time the silicon comes back, we need the PCIe testbench fully regression-clean.",
+        "tag": "업무",
+        "ko": "실리콘이 돌아올 때쯤이면 PCIe 테스트벤치가 리그레션을 완전히 통과한 상태여야 해."
+      }
+    ],
+    "mastered": false,
+    "added": "2026-08-23"
+  },
+  {
+    "id": "p16",
+    "text": "What do you feel like ~ing?",
+    "meaning": "뭐 하고 싶어? (기분/의향을 물을 때)",
+    "examples": [
+      {
+        "text": "What do you feel like eating tonight?",
+        "tag": "일상",
+        "ko": "오늘 밤엔 뭐 먹고 싶어?"
+      },
+      {
+        "text": "What do you feel like doing this weekend?",
+        "tag": "일상",
+        "ko": "이번 주말엔 뭐 하고 싶어?"
+      },
+      {
+        "text": "What do you feel like tackling first — the USB3 bug or the Ethernet coverage gap?",
+        "tag": "업무",
+        "ko": "뭐부터 먼저 다루고 싶어 — USB3 버그, 아니면 이더넷 커버리지 갭?"
+      }
+    ],
+    "mastered": false,
+    "added": "2026-08-23"
+  },
+  {
+    "id": "p17",
+    "text": "I feel like going",
+    "meaning": "~하고 싶은 기분이다.",
+    "examples": [
+      {
+        "text": "I feel like going for a walk.",
+        "tag": "일상",
+        "ko": "산책하러 가고 싶은 기분이야."
+      },
+      {
+        "text": "I feel like going home early today.",
+        "tag": "일상",
+        "ko": "오늘은 일찍 집에 가고 싶은 기분이야."
+      },
+      {
+        "text": "I feel like going through the waveform one more time before we close this bug.",
+        "tag": "업무",
+        "ko": "이 버그를 종료하기 전에 파형을 한 번 더 살펴보고 싶은 기분이야."
+      }
+    ],
+    "mastered": false,
+    "added": "2026-08-23"
+  },
+  {
+    "id": "p18",
+    "text": "end up ~ing",
+    "meaning": "결국 ~하게 되다.",
+    "examples": [
+      {
+        "text": "We ended up staying home instead of going out.",
+        "tag": "일상",
+        "ko": "우리는 결국 나가지 않고 집에 있게 됐어."
+      },
+      {
+        "text": "He ended up apologizing first.",
+        "tag": "일상",
+        "ko": "그는 결국 먼저 사과하게 됐어."
+      },
+      {
+        "text": "We ended up re-running the whole regression suite because of that clock-domain-crossing fix.",
+        "tag": "업무",
+        "ko": "그 클럭 도메인 크로싱 수정 때문에 결국 전체 리그레션 스위트를 다시 돌리게 됐어."
+      }
+    ],
+    "mastered": false,
+    "added": "2026-08-23"
+  },
+  {
+    "id": "p19",
+    "text": "Too much beautiful scenery to capture in one photo.",
+    "meaning": "너무 아름다운 풍경을 한 장의 사진에 담을 수 없다.",
+    "examples": [
+      {
+        "text": "Too much beautiful scenery to capture in one photo.",
+        "tag": "일상",
+        "ko": "너무 아름다운 풍경을 한 장의 사진에 담을 수 없다."
+      },
+      {
+        "text": "There was too much going on at the festival to capture in one video.",
+        "tag": "일상",
+        "ko": "축제에서 너무 많은 일이 있어서 한 영상에 담을 수 없었어."
+      },
+      {
+        "text": "There's too much coverage data to capture in a single dashboard, so we split it by interface.",
+        "tag": "업무",
+        "ko": "커버리지 데이터가 너무 많아서 대시보드 하나에 담을 수 없어서, 인터페이스별로 나눴어."
+      }
+    ],
+    "mastered": false,
+    "added": "2026-08-23"
+  },
+  {
+    "id": "p20",
+    "text": "That explains why + 주어 + 동사",
+    "meaning": "그래서 ~한 거구나, 그게 ~한 이유를 설명해주네.",
+    "examples": [
+      {
+        "text": "That explains why she was so quiet today.",
+        "tag": "일상",
+        "ko": "그래서 그녀가 오늘 그렇게 조용했던 거구나."
+      },
+      {
+        "text": "That explains why the door was locked.",
+        "tag": "일상",
+        "ko": "그래서 문이 잠겨 있었던 거구나."
+      },
+      {
+        "text": "That explains why the link kept retraining — the reference clock was out of spec.",
+        "tag": "업무",
+        "ko": "그래서 링크가 계속 재훈련(retrain)됐던 거구나 — 레퍼런스 클럭이 스펙을 벗어나 있었어."
+      }
+    ],
+    "mastered": false,
+    "added": "2026-08-23"
+  }
 ]</script>
 
 <script id="app-script">
@@ -471,14 +977,48 @@
     clearTimeout(toastTimer);
     toastTimer = setTimeout(function(){ el.hidden = true; }, 3400);
   }
+  // Picking a real voice matters: without one, some browsers fall back to a
+  // low-quality/robotic engine voice instead of the natural on-device one.
+  // Voices load asynchronously, so this may need a second pass via 'voiceschanged'.
+  var preferredVoice = null;
+  function pickPreferredVoice(){
+    if(!("speechSynthesis" in window)) return null;
+    var voices = window.speechSynthesis.getVoices() || [];
+    if(!voices.length) return null;
+    var enVoices = voices.filter(function(v){ return /^en(-|_|$)/i.test(v.lang); });
+    if(!enVoices.length) return null;
+    var usVoices = enVoices.filter(function(v){ return /en-US/i.test(v.lang); });
+    var pool = usVoices.length ? usVoices : enVoices;
+    var natural = pool.filter(function(v){ return /google|natural|online|enhanced|neural/i.test(v.name); });
+    return (natural[0] || pool[0]);
+  }
+  function initVoices(){
+    if(!("speechSynthesis" in window)) return;
+    preferredVoice = pickPreferredVoice();
+    window.speechSynthesis.addEventListener("voiceschanged", function(){
+      preferredVoice = pickPreferredVoice();
+    });
+  }
+  initVoices();
+
+  function makeUtterance(text){
+    var u = new SpeechSynthesisUtterance(text);
+    u.lang = "en-US";
+    u.rate = 0.95;
+    if(preferredVoice) u.voice = preferredVoice;
+    return u;
+  }
+
   function speak(text){
     if(!("speechSynthesis" in window)) { showToast("이 브라우저는 음성 재생을 지원하지 않아요."); return; }
     try{
-      window.speechSynthesis.cancel();
-      var u = new SpeechSynthesisUtterance(text);
-      u.lang = "en-US";
-      u.rate = 0.95;
-      window.speechSynthesis.speak(u);
+      // Only cancel when something is actually in flight — calling cancel()
+      // before every single speak() (even when idle) is what made playback
+      // sound clipped/robotic, especially back-to-back during autoplay.
+      if(window.speechSynthesis.speaking || window.speechSynthesis.pending){
+        window.speechSynthesis.cancel();
+      }
+      window.speechSynthesis.speak(makeUtterance(text));
     }catch(e){ /* ignore */ }
   }
   var speechSupported = ("speechSynthesis" in window);
@@ -538,6 +1078,147 @@
   });
 
   document.getElementById("next-card-btn").addEventListener("click", function(){ advanceReview(); });
+
+  // ---------- autoplay: continuous random playback of every example sentence ----------
+  var autoplay = { active: false, paused: false, queue: [], index: -1, translationsOn: false, gen: 0 };
+
+  function buildAutoplayQueue(){
+    var pool = activePhrases(state.reviewIncludeMastered);
+    var items = [];
+    pool.forEach(function(p){
+      (p.examples || []).forEach(function(ex){
+        if(ex && ex.text) items.push({ phraseText: p.text, ex: ex });
+      });
+    });
+    for(var i = items.length - 1; i > 0; i--){
+      var j = Math.floor(Math.random() * (i + 1));
+      var tmp = items[i]; items[i] = items[j]; items[j] = tmp;
+    }
+    return items;
+  }
+
+  function autoplayRenderCurrent(){
+    var item = autoplay.queue[autoplay.index];
+    if(!item) return;
+    document.getElementById("autoplay-phrase-text").textContent = item.phraseText;
+    document.getElementById("autoplay-example-text").textContent = item.ex.text;
+    var trEl = document.getElementById("autoplay-translation-text");
+    if(item.ex.ko){
+      trEl.textContent = item.ex.ko;
+      trEl.hidden = !autoplay.translationsOn;
+    }else{
+      trEl.textContent = "";
+      trEl.hidden = true;
+    }
+  }
+
+  // Small gap between utterances — calling speak() again the instant the
+  // previous one ends is what made autoplay sound clipped/robotic on some
+  // engines. A brief pause lets the TTS engine fully release before the next.
+  var AUTOPLAY_GAP_MS = 350;
+
+  function autoplaySpeakCurrent(){
+    var item = autoplay.queue[autoplay.index];
+    if(!item){ autoplayStop(); return; }
+    if(!speechSupported){ autoplayAdvance(); return; }
+    autoplay.gen++;
+    var myGen = autoplay.gen;
+    try{
+      // Only cancel if something is actually still in flight (e.g. the user
+      // hit "다음" mid-sentence) — cancelling on every normal advance is
+      // what caused the choppy/robotic sound during continuous playback.
+      if(window.speechSynthesis.speaking || window.speechSynthesis.pending){
+        window.speechSynthesis.cancel();
+      }
+      var u = makeUtterance(item.ex.text);
+      u.onend = function(){
+        if(autoplay.active && !autoplay.paused && autoplay.gen === myGen){
+          setTimeout(function(){
+            if(autoplay.active && !autoplay.paused && autoplay.gen === myGen) autoplayAdvance();
+          }, AUTOPLAY_GAP_MS);
+        }
+      };
+      u.onerror = function(){
+        if(autoplay.active && !autoplay.paused && autoplay.gen === myGen) autoplayAdvance();
+      };
+      window.speechSynthesis.speak(u);
+    }catch(e){
+      autoplayAdvance();
+    }
+  }
+
+  function autoplayAdvance(){
+    if(!autoplay.active) return;
+    autoplay.index++;
+    if(autoplay.index >= autoplay.queue.length){
+      autoplay.queue = buildAutoplayQueue();
+      autoplay.index = 0;
+      if(autoplay.queue.length === 0){ autoplayStop(); return; }
+    }
+    autoplayRenderCurrent();
+    autoplaySpeakCurrent();
+  }
+
+  function autoplayStart(){
+    var queue = buildAutoplayQueue();
+    if(queue.length === 0){
+      showToast("재생할 예문이 없어요.");
+      return;
+    }
+    autoplay.active = true;
+    autoplay.paused = false;
+    autoplay.queue = queue;
+    autoplay.index = -1;
+    document.getElementById("autoplay-bar").hidden = false;
+    document.body.classList.add("autoplay-open");
+    var pauseBtn = document.getElementById("autoplay-pause-btn");
+    pauseBtn.textContent = "⏸";
+    pauseBtn.setAttribute("aria-label", "일시정지");
+    autoplayAdvance();
+  }
+
+  function autoplayStop(){
+    autoplay.active = false;
+    autoplay.paused = false;
+    try{ window.speechSynthesis.cancel(); }catch(e){}
+    document.getElementById("autoplay-bar").hidden = true;
+    document.body.classList.remove("autoplay-open");
+  }
+
+  function autoplayTogglePause(){
+    if(!autoplay.active) return;
+    var btn = document.getElementById("autoplay-pause-btn");
+    if(!autoplay.paused){
+      autoplay.paused = true;
+      try{ window.speechSynthesis.pause(); }catch(e){}
+      btn.textContent = "▶";
+      btn.setAttribute("aria-label", "재생");
+    }else{
+      autoplay.paused = false;
+      try{ window.speechSynthesis.resume(); }catch(e){}
+      btn.textContent = "⏸";
+      btn.setAttribute("aria-label", "일시정지");
+    }
+  }
+
+  document.getElementById("autoplay-start-btn").addEventListener("click", autoplayStart);
+  document.getElementById("autoplay-stop-btn").addEventListener("click", autoplayStop);
+  document.getElementById("autoplay-pause-btn").addEventListener("click", autoplayTogglePause);
+  document.getElementById("autoplay-next-btn").addEventListener("click", function(){
+    if(autoplay.paused){
+      autoplay.paused = false;
+      var pauseBtn = document.getElementById("autoplay-pause-btn");
+      pauseBtn.textContent = "⏸";
+      pauseBtn.setAttribute("aria-label", "일시정지");
+    }
+    autoplayAdvance();
+  });
+  document.getElementById("autoplay-translate-btn").addEventListener("click", function(){
+    autoplay.translationsOn = !autoplay.translationsOn;
+    var trEl = document.getElementById("autoplay-translation-text");
+    var item = autoplay.queue[autoplay.index];
+    if(item && item.ex.ko) trEl.hidden = !autoplay.translationsOn;
+  });
 
   function getDailyPool(pool){
     if(pool.length === 0) return [];
@@ -602,15 +1283,21 @@
       : "전체 랜덤";
     progressEl.textContent = eyebrow;
 
-    var examplesHtml = card.examples && card.examples.length
+    var hasExamples = card.examples && card.examples.length > 0;
+    var examplesHtml = hasExamples
       ? '<ul class="card-examples">' + card.examples.map(function(ex, i){
           var tag = ex.tag || "예문";
           var text = ex.text || "";
-          return '<li><span><span class="ex-tag">' + esc(tag) + '</span>' + esc(text) + '</span>' +
+          return '<li>' +
+            '<div class="ex-row"><span><span class="ex-tag">' + esc(tag) + '</span>' + esc(text) + '</span>' +
             (speechSupported ? '<button class="icon-btn-sm" data-speak-ex="' + i + '" aria-label="예문 발음 듣기">🔊</button>' : '') +
+            '</div>' +
+            (ex.ko ? '<p class="ex-translation" data-translation hidden>' + esc(ex.ko) + '</p>' : '') +
             '</li>';
         }).join("") + '</ul>'
       : '<p class="card-empty-ex">아직 예문이 없어요. 대화에서 "이 표현 예문 만들어줘"라고 요청해보세요.</p>';
+
+    var hasAnyTranslation = hasExamples && card.examples.some(function(ex){ return !!ex.ko; });
 
     slot.innerHTML =
       '<div class="card">' +
@@ -622,6 +1309,7 @@
         '<button class="reveal-btn" id="reveal-btn" type="button">뜻 · 예문 보기</button>' +
         '<div class="card-back" id="card-back" hidden>' +
           (card.meaning ? '<p class="card-meaning">' + esc(card.meaning) + '</p>' : '') +
+          (hasAnyTranslation ? '<button class="translate-toggle-btn" id="translate-toggle-btn" type="button">번역 보기</button>' : '') +
           examplesHtml +
         '</div>' +
         '<div class="card-footer">' +
@@ -644,6 +1332,15 @@
         speak(card.examples[i].text);
       });
     });
+    var translateBtn = document.getElementById("translate-toggle-btn");
+    if(translateBtn){
+      translateBtn.addEventListener("click", function(){
+        var shown = translateBtn.dataset.shown === "1";
+        slot.querySelectorAll("[data-translation]").forEach(function(p){ p.hidden = shown; });
+        translateBtn.dataset.shown = shown ? "0" : "1";
+        translateBtn.textContent = shown ? "번역 보기" : "번역 숨기기";
+      });
+    }
     var masteredCb = document.getElementById("review-mastered-toggle");
     masteredCb.addEventListener("change", function(e){
       var val = e.target.checked;
@@ -877,7 +1574,11 @@
           existingIds[newId] = true;
           var normExamples = Array.isArray(p.examples) ? p.examples.map(function(x){
             if(typeof x === "string") return {text: x, tag: "일상"};
-            if(x && typeof x.text === "string") return {text: x.text, tag: (x.tag === "업무" ? "업무" : "일상")};
+            if(x && typeof x.text === "string"){
+              var out = {text: x.text, tag: (x.tag === "업무" ? "업무" : "일상")};
+              if(typeof x.ko === "string" && x.ko) out.ko = x.ko;
+              return out;
+            }
             return null;
           }).filter(Boolean) : [];
           next.push({
