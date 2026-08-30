@@ -1,7 +1,7 @@
 // 문장 서랍 — minimal offline app-shell cache.
 // Bump CACHE_NAME whenever index.html/manifest/icons change so old caches are dropped,
 // and so the browser's byte-comparison of this file actually detects an update.
-var CACHE_NAME = "sentence-drawer-v4";
+var CACHE_NAME = "sentence-drawer-v5";
 var APP_SHELL = [
   "./",
   "./index.html",
